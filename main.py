@@ -1,6 +1,7 @@
 from dash import Dash, html, callback, clientside_callback, Output, Input, State
 import dash_bootstrap_components as dbc
 from function import *
+import pandas as pd
 
 # The logo path
 DFA_LOGO = '/assets/logo.png'
@@ -65,8 +66,11 @@ tab2_content = dbc.Card(
 
 tab3_content = dbc.Card(
     dbc.CardBody([
-
-    ]),
+        html.Div(id='stopwordOccurrencesTable',
+                 style={'width': '25vw', 'maxHeight': '48vh', 'overflowY': 'auto'})
+    ],
+        className='d-flex justify-content-center'
+    ),
     className="mt-3",
 )
 
@@ -132,7 +136,7 @@ app.layout = html.Div([
                             className="d-flex justify-content-center mt-3"
                         )
                     ],
-                        id='inputPage', hidden=True
+                        id='inputPage'
                     ),
 
                     html.Div([
@@ -147,7 +151,7 @@ app.layout = html.Div([
                                     activeLabelClassName="text-primary"),
                         ], id='tabs')
                     ],
-                        id='resultPage', className='p-5'
+                        id='resultPage', className='p-5', hidden=True
                     )
 
                 ],
@@ -188,7 +192,7 @@ def createSuccessLog(word):
             ]),
 
             dbc.Badge(
-                "Stopword",
+                "Accept",
                 color="success",
                 className="border me-1",
             )
@@ -209,7 +213,7 @@ def createFailLog(word):
             ]),
 
             dbc.Badge(
-                "Non-stopword",
+                "Reject",
                 color="danger",
                 className="border me-1",
             )
@@ -282,6 +286,16 @@ def highlight_stopwords(found_stopword, text):
     return full_text
 
 
+# To create a table for the stopword occurrences
+def createStopwordOccurrenceTable(stopword_occurrences):
+    # Convert dictionary to DataFrame
+    df = pd.DataFrame(list(stopword_occurrences.items()), columns=['Stopword', 'Occurrences'])
+
+    # USe df to create the table
+    return dbc.Table.from_dataframe(df, striped=True, bordered=True, hover=True, color='primary',
+                                    responsive=True, style={'textAlign':'center'})
+
+
 # To process the input text when clicking the button
 # The show the result page with the result
 @callback(
@@ -289,6 +303,7 @@ def highlight_stopwords(found_stopword, text):
     Output('resultPage', 'hidden'),
     Output('resultLogs', 'children'),
     Output('resultText', 'children'),
+    Output('stopwordOccurrencesTable', 'children'),
     Input('checkButton', 'n_clicks'),
     State('textInput', 'value'),
     prevent_initial_call=True,
@@ -314,9 +329,16 @@ def checkStopwords(n, text):
         else:
             logs.append(createFailLog(word))
 
+    # Sort the dictionary of stopword occurrences in ascending order
+    found_stopword = dict(sorted(found_stopword.items()))
+
+    # To get the text with highlighted stopwords
     highlighted_text = highlight_stopwords(list(found_stopword.keys()), text)
 
-    return [True, False, logs, highlighted_text]
+    # To create table for stopword occurrences
+    table = createStopwordOccurrenceTable(found_stopword)
+
+    return [True, False, logs, highlighted_text, table]
 
 
 # The back button callback
@@ -333,4 +355,4 @@ def goBackInputPage(n):
 
 # To run the dash app
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
